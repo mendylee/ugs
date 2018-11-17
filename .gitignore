@@ -1,0 +1,13 @@
+.project
+.classpath
+*.class
+/.settings/
+/logs/
+/usd.bll/logs
+/usd.service/logs
+/usd.service/shared
+/install/
+/packages/
+.DS_Store
+.idea
+*.iml

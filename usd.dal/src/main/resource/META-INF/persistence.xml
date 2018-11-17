@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<persistence xmlns="http://java.sun.com/xml/ns/persistence"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xsi:schemaLocation="http://java.sun.com/xml/ns/persistence
+ http://java.sun.com/xml/ns/persistence/persistence_1_0.xsd" version="1.0">
+
+    <persistence-unit name="HibernatePersistenceUnit">
+        <provider>org.hibernate.ejb.HibernatePersistence</provider>
+
+        <class>com.xrk.usd.dal.entity.UgsObserver</class>
+        <class>com.xrk.usd.dal.entity.UgsProcessLog</class>
+		<class>com.xrk.usd.dal.entity.UgsGrowingRuleParameter</class>
+
+		<class>com.xrk.usd.dal.entity.UgsGrowingRuleList</class>
+		<class>com.xrk.usd.dal.entity.UgsGrowingRulePlugin</class>
+		<class>com.xrk.usd.dal.entity.UgsGrowingActiveGroup</class>
+		<class>com.xrk.usd.dal.entity.UgsGrowingRuleGroup</class>
+		<class>com.xrk.usd.dal.entity.UgsUserGradeConfigList</class>
+		<class>com.xrk.usd.dal.entity.UgsUserGradeConfig</class>
+		<class>com.xrk.usd.dal.entity.UgsUserPointHistory</class>
+		<class>com.xrk.usd.dal.entity.UgsUserPoint</class>
+		<class>com.xrk.usd.dal.entity.UgsUserInfo</class>
+		<class>com.xrk.usd.dal.entity.UgsPointType</class>
+		<class>com.xrk.usd.dal.entity.UgsGrowingType</class>
+
+        <properties>
+            <property name="hibernate.dialect" value="org.hibernate.dialect.PostgreSQLDialect"/>
+			<property name="connection.driver_class" value="org.postgresql.Driver"/>
+            <property name="hibernate.connection.url" value="jdbc:postgresql://${pg.host}:${pg.port}/${pg.db}"/>
+			<property name="hibernate.connection.username" value="${pg.user}"/>
+			<property name="hibernate.connection.password" value="${pg.password}"/>
+
+            <property name="hibernate.show_sql" value="true"/>
+            <property name="hibernate.format_sql" value="true"/>
+
+			<property name="hibernate.query.jpaql_strict_compliance" value="false"/>
+            <property name="hibernate.validator.apply_to_ddl" value="false"/>
+            <property name="hibernate.validator.autoregister_listeners" value="false"/>
+            <property name="hibernate.archive.autodetection" value="class, hbm"/>
+
+			<property name="hibernate.connection.provider_class" value="org.hibernate.connection.C3P0ConnectionProvider" />
+			<property name="hibernate.c3p0.min_size" value="5"/>
+            <property name="hibernate.c3p0.max_size" value="20"/>
+            <property name="hibernate.c3p0.idleTestPeriod" value="30"/>
+            <property name="hibernate.c3p0.timeout" value="5"/>
+            <property name="hibernate.c3p0.max_statements" value="0"/>
+            <property name="hibernate.c3p0.testConnectionOnCheckout" value="true"/>
+        </properties>
+    </persistence-unit>
+</persistence>

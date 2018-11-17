@@ -1,0 +1,202 @@
+#!/bin/bash
+
+## ==========================================================================
+##
+##   INSTALL SCRIPT
+##
+## ==========================================================================
+
+echo -e -n "\e[0m" 
+
+RUN_PATH=`pwd`
+INSTALL_PATH=$HOME
+CONFIG_FILE=${HOME}/.ugs.cfg
+DB_HOST=127.0.0.1
+DB_PORT=5432
+DB_NAME=ugs
+DB_USER=postgres
+DB_PWD=123456
+HTTP_PORT=8181
+
+function installUgs()
+{
+  if [ -d ${UGS_INSTALL_PATH} ]; then
+    rm -rf ${UGS_INSTALL_PATH}
+  fi
+  mkdir -p ${UGS_INSTALL_PATH}
+	
+  cp -rf ${RUN_PATH}/install/* ${UGS_INSTALL_PATH}
+  chmod +x ${UGS_INSTALL_PATH}/*.sh
+  chmod +x ${UGS_INSTALL_PATH}/jre/bin/*
+  chmod +x ${UGS_INSTALL_PATH}/pg/bin/*
+}
+
+function removeTempFile()
+{
+  rm -rf ${UGS_INSTALL_PATH}/bin
+  rm -rf ${UGS_INSTALL_PATH}/pg
+  rm -f ${UGS_INSTALL_PATH}/*.sql
+  rm -f ${UGS_INSTALL_PATH}/init_db.sh
+}
+
+function updateLocalSetting()
+{ 
+  # update .ugs.cfg
+  if [ -f ${CONFIG_FILE} ]; then
+    rm ${CONFIG_FILE}
+  fi
+
+  INSTALLL_USERID=`id -u`
+    
+  echo "UGS_INSTALL_PATH=${UGS_INSTALL_PATH}" >> ${CONFIG_FILE}
+  echo "INSTALLL_USERID=${INSTALLL_USERID}" >> ${CONFIG_FILE}
+  
+  # update .bash_profile
+  UGS_BIN_PATH=${UGS_INSTALL_PATH}
+  UGS_LIB_PATH=${UGS_INSTALL_PATH}/lib
+  
+  let config_exist=`grep "PATH" ~/.bash_profile | grep "${UGS_BIN_PATH}" | wc -l`
+  if [ ${config_exist} -eq 0 ]; then
+    sed -i '/export PATH=/d' ~/.bash_profile
+    sed -i '/export LD_LIBRARY_PATH=/d' ~/.bash_profile
+    echo "export PATH=${UGS_BIN_PATH}:$PATH" >> ~/.bash_profile
+    echo "export LD_LIBRARY_PATH=${UGS_LIB_PATH}:$LD_LIBRARY_PATH" >> ~/.bash_profile    
+  fi
+  sed -i '/UGS_CONFIG_FILE/d' ~/.bash_profile
+  echo "export UGS_CONFIG_FILE=${CONFIG_FILE}" >> ~/.bash_profile
+}
+
+source ~/.bash_profile
+
+if [ -f ${CONFIG_FILE} ];then
+   . ${CONFIG_FILE}
+fi
+
+#read -p "Server listen port(default is ${HTTP_PORT}): " server_port
+              
+#if [ ! -z $server_port ]; then
+#  HTTP_PORT=$server_port
+#fi
+
+let db_info_result=1
+while [ $db_info_result -gt 0 ]
+do
+  read -p "Install path (default is ${INSTALL_PATH}): " path_input
+
+  if [ ! -z $path_input ]; then
+    if [ ! -d $path_input ]; then
+      mkdir -p $path_input
+    fi
+  
+    INSTALL_PATH=$path_input
+  fi
+
+  read -p "DB server IP (default is ${DB_HOST}):" db_host
+  if [ ! -z "$db_host" ]; then
+    DB_HOST=$db_host
+  fi
+  
+  read -p "DB port : (default is ${DB_PORT}): " db_port
+  if [ ! -z $db_port ]; then
+    DB_PORT=$db_port
+  fi
+
+  read -p "DB name : (default is ${DB_NAME}): " db_name
+  if [ ! -z $db_name ]; then
+    DB_NAME=$db_name
+  fi
+  
+  read -p "DB user : (default is ${DB_USER}): " db_user
+  if [ ! -z $db_user ]; then
+    DB_USER=$db_user
+  fi
+  
+  read -p "DB password : (default is ${DB_PWD}): " db_pwd
+  if [ ! -z $db_pwd ]; then
+    DB_PWD=$db_pwd
+  fi
+
+  echo -e -n "\e[32m"
+  echo "Are you sure install info is: 
+    Install Path : ${INSTALL_PATH}
+    Database Host: ${DB_HOST}
+    Database Port: ${DB_PORT}
+    Database Name: ${DB_NAME}
+    Database User: ${DB_USER}
+    Database Pass: ${DB_PWD}"
+
+  echo -e -n "\e[5m"
+  read -p " (y/n, default is no) " X 
+  echo -e -n "\e[0m"  
+  if [ -z $X ]; then
+    X=n
+  fi
+
+  case "$X" in
+    y|yes|Y|Yes)
+      let db_info_result=0;;
+    n|no|N|No);;
+    *)
+  esac
+done
+
+command -v stop_ugs.sh >/dev/null 2>&1 && { stop_ugs.sh; }
+
+echo "1> Extract the install the package ..."
+
+UGS_INSTALL_PATH=${INSTALL_PATH}/ugsserver
+  
+echo "2> Install package to ${UGS_INSTALL_PATH} ..."
+installUgs
+
+echo "3> update app.properties"
+#sed -i 's/host=[[:digit:].]*/host='${DB_HOST}'/g' ${UGS_INSTALL_PATH}/conf/app.properties
+#sed -i 's/port=[[:digit:]]*/port='${DB_PORT}'/g' ${UGS_INSTALL_PATH}/conf/app.properties
+#sed -i 's/db.type=[[:digit:]]*/db.type='${DB_TYPE}'/g' ${UGS_INSTALL_PATH}/conf/app.properties
+
+sed -i 's/postgresql:\/\/[[:digit:].]*:[[:digit:]]*\/[[:alnum:]_-]*/postgresql:\/\/'${DB_HOST}':'${DB_PORT}'\/'${DB_NAME}'/g' ${UGS_INSTALL_PATH}/conf/META-INF/persistence.xml
+sed -i 's/connection.username" value="[[:alnum:]_]*"/connection.username" value="'${DB_USER}'"/g' ${UGS_INSTALL_PATH}/conf/META-INF/persistence.xml
+sed -i 's/connection.password" value="\S*"/connection.password" value="'${DB_PWD}'"/g' ${UGS_INSTALL_PATH}/conf/META-INF/persistence.xml
+
+echo "3.2> init postgresql database"
+read -p " Initial database(create database and initialization data schema )? (y/n, default is no) " X
+if [ -z $X ]; then
+   X=n
+fi
+
+case "$X" in
+  y|yes|Y|Yes)
+    echo "> drop exists database: ${DB_NAME}"
+    ${UGS_INSTALL_PATH}/pg/bin/dropdb --host=${DB_HOST} --username=${DB_USER} ${DB_NAME}
+  
+    echo "> create new database: ${DB_NAME}"
+    ${UGS_INSTALL_PATH}/pg/bin/createdb --host=${DB_HOST} --username=${DB_USER} ${DB_NAME}
+
+    echo "> crate database table and index"
+    ${UGS_INSTALL_PATH}/pg/bin/psql --host=${DB_HOST} --username=${DB_USER} --dbname=${DB_NAME} --file=${UGS_INSTALL_PATH}/ugs_pgsql.sql;;
+  n|no|N|No);;
+  *)
+esac
+
+read -p " Initial database base data? (y/n, default is no) " X
+if [ -z $X ]; then
+   X=n
+fi
+
+case "$X" in
+   y|yes|Y|YES|Yes)
+      ${UGS_INSTALL_PATH}/jre/bin/java -cp "./lib/*" com.xrk.usd.dal.DataInitializer;;
+   n|no|No|NO);;
+   *)
+esac
+ 
+echo "4> Save ugs setting to file: ${CONFIG_FILE} "
+
+updateLocalSetting
+removeTempFile
+
+source ~/.bash_profile
+
+echo "**********************************************************************************************"
+echo "*     UGS Server install finished, please run 'start_ugs.sh' command start ugs server !   *"
+echo "**********************************************************************************************"
